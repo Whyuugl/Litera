@@ -187,11 +187,20 @@ class CatalogApiTest(unittest.TestCase):
 
     def test_user_cannot_manage_catalog(self) -> None:
         headers = self.headers(self.user)
+        self.assertEqual(
+            self.client.get("/api/v1/admin/books", headers=headers).status_code, 403
+        )
         response = self.client.post(
             "/api/v1/admin/categories", headers=headers, json={"name": "Forbidden"}
         )
         self.assertEqual(response.status_code, 403)
         unknown = uuid.uuid4()
+        self.assertEqual(
+            self.client.get(
+                f"/api/v1/admin/books/{unknown}", headers=headers
+            ).status_code,
+            403,
+        )
         self.assertEqual(
             self.client.patch(
                 f"/api/v1/admin/books/{unknown}", headers=headers, json={"title": "No"}
@@ -205,6 +214,47 @@ class CatalogApiTest(unittest.TestCase):
             403,
         )
 
+    def test_admin_reads_all_books_and_nested_resources(self) -> None:
+        category = self.create_category()
+        author = self.create_author()
+        draft = self.create_book(
+            category["id"], [author["id"]], title="Draft Guide", status="DRAFT"
+        )
+        published = self.create_book(category["id"], [author["id"]])
+        edition = self.client.post(
+            f"/api/v1/admin/books/{published['id']}/editions",
+            headers=self.admin_headers,
+            json={"publisher": "Litera Press"},
+        ).json()
+        self.client.post(
+            f"/api/v1/admin/editions/{edition['id']}/digital-files",
+            headers=self.admin_headers,
+            json={
+                "file_url": "https://example.com/clean-code.pdf",
+                "file_type": "PDF",
+                "access_level": "REGISTERED",
+            },
+        )
+        self.client.post(
+            f"/api/v1/admin/editions/{edition['id']}/copies",
+            headers=self.admin_headers,
+            json={"barcode": "ADMIN-READ-1"},
+        )
+
+        listing = self.client.get(
+            "/api/v1/admin/books?status=DRAFT&search=Draft&page=1&page_size=10",
+            headers=self.admin_headers,
+        )
+        self.assertEqual(listing.status_code, 200)
+        self.assertEqual(listing.json()["items"][0]["id"], draft["id"])
+
+        detail = self.client.get(
+            f"/api/v1/admin/books/{published['id']}", headers=self.admin_headers
+        )
+        self.assertEqual(detail.status_code, 200)
+        body = detail.json()
+        self.assertEqual(body["editions"][0]["digital_files"][0]["file_type"], "PDF")
+        self.assertEqual(body["editions"][0]["physical_copies"][0]["barcode"], "ADMIN-READ-1")
     def test_admin_creation_slug_collision_and_references(self) -> None:
         category = self.create_category()
         author = self.create_author()

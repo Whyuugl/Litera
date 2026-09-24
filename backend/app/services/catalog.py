@@ -11,6 +11,7 @@ from app.repositories import catalog as repository
 from app.schemas.catalog import (
     AuthorCreate,
     AuthorUpdate,
+    BookAdminDetail,
     BookAdminResponse,
     BookCopyCreate,
     BookCopyUpdate,
@@ -22,6 +23,7 @@ from app.schemas.catalog import (
     DigitalAvailability,
     DigitalFileCreate,
     DigitalFileUpdate,
+    EditionAdminDetail,
     EditionCreate,
     EditionPublicResponse,
     EditionUpdate,
@@ -166,6 +168,35 @@ def delete_author(session: Session, author_id: uuid.UUID) -> None:
 def get_public_books(session: Session, **filters) -> Page:
     items, total = repository.list_public_books(session, **filters)
     return _page(items, total, filters["page"], filters["page_size"])
+
+
+def get_admin_books(session: Session, **filters) -> Page:
+    items, total = repository.list_admin_books(session, **filters)
+    return _page(items, total, filters["page"], filters["page_size"])
+
+
+def get_admin_book(session: Session, book_id: uuid.UUID) -> BookAdminDetail:
+    book = repository.get_admin_book_detail(session, book_id)
+    if not book:
+        raise CatalogNotFound
+    return BookAdminDetail(
+        **BookAdminResponse.model_validate(book).model_dump(),
+        editions=[
+            EditionAdminDetail(
+                id=edition.id,
+                book_id=edition.book_id,
+                isbn=edition.isbn,
+                publisher=edition.publisher,
+                edition_number=edition.edition_number,
+                publication_year=edition.publication_year,
+                page_count=edition.page_count,
+                language=edition.language,
+                digital_files=edition.digital_files,
+                physical_copies=edition.physical_copies,
+            )
+            for edition in book.editions
+        ],
+    )
 
 
 def _book_detail(book: Book) -> BookDetail:

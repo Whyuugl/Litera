@@ -274,3 +274,12 @@ class BookCopyResponse(BaseModel):
     status: BookCopyStatus
     condition: str | None
     acquired_at: datetime | None
+
+
+class EditionAdminDetail(EditionAdminResponse):
+    digital_files: list[DigitalFileAdminResponse]
+    physical_copies: list[BookCopyResponse]
+
+
+class BookAdminDetail(BookAdminResponse):
+    editions: list[EditionAdminDetail]

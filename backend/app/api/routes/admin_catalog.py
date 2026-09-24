@@ -1,12 +1,15 @@
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Query, Response, status
 
 from app.api.dependencies import AdminUser, DatabaseSession
+from app.models import BookStatus, BookType
 from app.schemas.catalog import (
     AuthorCreate,
     AuthorResponse,
     AuthorUpdate,
+    BookAdminDetail,
     BookAdminResponse,
     BookCopyCreate,
     BookCopyResponse,
@@ -22,6 +25,7 @@ from app.schemas.catalog import (
     EditionAdminResponse,
     EditionCreate,
     EditionUpdate,
+    Page,
 )
 from app.services import catalog as service
 from app.services.catalog import CatalogConflict, CatalogNotFound, InvalidCatalogReference
@@ -36,6 +40,36 @@ def _raise_catalog_error(exc: Exception) -> HTTPException:
     if isinstance(exc, InvalidCatalogReference):
         return HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid catalog reference")
     return HTTPException(status.HTTP_409_CONFLICT, str(exc) or "Catalog conflict")
+
+
+@router.get("/books", response_model=Page[BookAdminResponse])
+def books(
+    session: DatabaseSession,
+    _: AdminUser,
+    search: Annotated[str | None, Query(max_length=255)] = None,
+    category: Annotated[str | None, Query(max_length=255)] = None,
+    book_type: BookType | None = None,
+    book_status: Annotated[BookStatus | None, Query(alias="status")] = None,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+):
+    return service.get_admin_books(
+        session,
+        search=search,
+        category=category,
+        book_type=book_type,
+        status=book_status,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/books/{book_id}", response_model=BookAdminDetail)
+def book(book_id: uuid.UUID, session: DatabaseSession, _: AdminUser):
+    try:
+        return service.get_admin_book(session, book_id)
+    except CatalogNotFound as exc:
+        raise _raise_catalog_error(exc) from exc
 
 
 @router.post("/categories", response_model=CategoryResponse, status_code=201)

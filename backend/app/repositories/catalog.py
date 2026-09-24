@@ -82,6 +82,34 @@ def list_public_books(
     return paginate(session, statement.order_by(Book.title), page, page_size)
 
 
+def list_admin_books(
+    session: Session,
+    *,
+    page: int,
+    page_size: int,
+    search: str | None,
+    category: str | None,
+    book_type: BookType | None,
+    status: BookStatus | None,
+):
+    statement = select(Book)
+    if search:
+        pattern = f"%{search.strip()}%"
+        statement = statement.outerjoin(Book.authors).where(
+            or_(Book.title.ilike(pattern), Author.name.ilike(pattern))
+        )
+    if category:
+        statement = statement.join(Book.category).where(Category.slug == category)
+    if book_type:
+        statement = statement.where(Book.book_type == book_type)
+    if status:
+        statement = statement.where(Book.status == status)
+    statement = statement.distinct().options(
+        joinedload(Book.category), selectinload(Book.authors)
+    )
+    return paginate(session, statement.order_by(Book.updated_at.desc()), page, page_size)
+
+
 def get_public_book(session: Session, identifier: str) -> Book | None:
     try:
         condition = Book.id == uuid.UUID(identifier)
@@ -104,6 +132,19 @@ def get_book(session: Session, book_id: uuid.UUID) -> Book | None:
         select(Book)
         .where(Book.id == book_id)
         .options(joinedload(Book.category), selectinload(Book.authors))
+    )
+
+
+def get_admin_book_detail(session: Session, book_id: uuid.UUID) -> Book | None:
+    return session.scalar(
+        select(Book)
+        .where(Book.id == book_id)
+        .options(
+            joinedload(Book.category),
+            selectinload(Book.authors),
+            selectinload(Book.editions).selectinload(Edition.digital_files),
+            selectinload(Book.editions).selectinload(Edition.physical_copies),
+        )
     )
 
 
