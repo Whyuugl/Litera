@@ -29,7 +29,7 @@ The original PHP project is preserved under `legacy/perpus-app/` as a historical
 
 ## Development Status
 
-Litera currently includes the project foundation, catalog database schema, backend authentication, membership lifecycle, and the Phase 4 core catalog API. File storage, borrowing, e-book reading, quizzes, AI summarization, RAG, and ML recommendations are not implemented yet.
+Litera currently includes the project foundation, catalog database schema, backend authentication, membership lifecycle, the core catalog API, the Phase 5B user experience, and the Phase 5C admin workspace for catalog and membership management. File storage, borrowing, e-book reading, quizzes, AI summarization, RAG, and ML recommendations are not implemented yet.
 
 ## Backend Setup
 
@@ -45,3 +45,14 @@ Create `.env` from `.env.example`, set `DATABASE_URL` and a private `JWT_SECRET_
 alembic upgrade head
 uvicorn app.main:app --reload
 ```
+
+## Frontend Setup
+
+From `frontend/`, install dependencies and start Vite:
+
+```bash
+npm install
+npm run dev
+```
+
+Set `VITE_API_BASE_URL` when the API is not available at `http://localhost:8000`.
