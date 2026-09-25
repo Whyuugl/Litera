@@ -76,7 +76,7 @@ onMounted(async () => {
   <main class="explore-page">
     <header class="explore-intro">
       <p class="eyebrow">Explore the collection</p>
-      <div><h1>Find something<br />worth your time.</h1><p>Follow a subject, an author, or a question. The next useful idea may be closer than you think.</p></div>
+      <div><h1>Choose an e-book.<br />Start reading.</h1><p>Explore Litera's digital collection and open available books directly in your browser. Printed borrowing remains available when you need it.</p></div>
       <label class="explore-search"><Search :size="20" /><span class="sr-only">Search title, author, or topic</span><input v-model="search" type="search" placeholder="Search title, author, or topic..." /><button v-if="search" type="button" aria-label="Clear search" @click="search = ''"><X :size="18" /></button></label>
     </header>
 

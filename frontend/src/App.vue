@@ -5,18 +5,25 @@ import { api, clearSession, hasSession, saveSession, type BookSummary, type Page
 import BookCard from "./components/BookCard.vue";
 import AdminShell from "./components/AdminShell.vue";
 import ToastHost from "./components/ToastHost.vue";
+import ContinueReading from "./components/ContinueReading.vue";
 import BookDetailPage from "./pages/BookDetailPage.vue";
 import ExplorePage from "./pages/ExplorePage.vue";
 import MembershipPage from "./pages/MembershipPage.vue";
+import LearningPage from "./pages/LearningPage.vue";
+import QuizPage from "./pages/QuizPage.vue";
+import LibraryPage from "./pages/LibraryPage.vue";
 import ProfilePage from "./pages/ProfilePage.vue";
+import ReaderPage from "./pages/ReaderPage.vue";
 import AdminBookDetail from "./pages/admin/AdminBookDetail.vue";
 import AdminBooks from "./pages/admin/AdminBooks.vue";
 import AdminMemberDetail from "./pages/admin/AdminMemberDetail.vue";
 import AdminMembers from "./pages/admin/AdminMembers.vue";
 import AdminOverview from "./pages/admin/AdminOverview.vue";
 import AdminTaxonomy from "./pages/admin/AdminTaxonomy.vue";
+import AdminCirculation from "./pages/admin/AdminCirculation.vue";
+import AdminLearning from "./pages/admin/AdminLearning.vue";
 
-type View = "landing" | "login" | "register" | "home" | "explore" | "book" | "membership" | "profile" | "admin" | "not-found";
+type View = "landing" | "login" | "register" | "home" | "explore" | "book" | "reader" | "learn" | "quiz" | "library" | "membership" | "profile" | "admin" | "not-found";
 
 const currentPath = ref(location.pathname);
 const mobileOpen = ref(false);
@@ -38,15 +45,20 @@ const view = computed<View>(() => {
   if (currentPath.value === "/home") return "home";
   if (currentPath.value === "/explore") return "explore";
   if (currentPath.value === "/membership") return "membership";
+  if (currentPath.value === "/library") return "library";
   if (currentPath.value === "/profile") return "profile";
   if (currentPath.value === "/admin" || currentPath.value.startsWith("/admin/")) return "admin";
   if (/^\/books\/[^/]+$/.test(currentPath.value)) return "book";
+  if (/^\/read\/[^/]+$/.test(currentPath.value)) return "reader";
+  if (/^\/learn\/[^/]+$/.test(currentPath.value)) return "learn";
+  if (/^\/quiz\/[^/]+$/.test(currentPath.value)) return "quiz";
   return "not-found";
 });
 const bookSlug = computed(() => decodeURIComponent(currentPath.value.split("/")[2] || ""));
+const readerEditionId = computed(() => decodeURIComponent(currentPath.value.split("/")[2] || ""));
 const catalogCovers = computed(() => catalogBooks.value.filter((book) => book.cover_url));
 const signInPath = computed(() => currentPath.value.startsWith("/books/") ? `/login?redirect=${encodeURIComponent(currentPath.value)}` : "/login");
-const protectedPaths = new Set(["/home", "/membership", "/profile"]);
+const protectedPaths = new Set(["/home", "/library", "/membership", "/profile"]);
 
 function navigate(path: string, replace = false) {
   const target = new URL(path, location.origin);
@@ -141,12 +153,13 @@ onBeforeUnmount(() => removeEventListener("popstate", handlePopState));
 
 <template>
   <div class="site-frame">
-    <header v-if="view !== 'admin'" class="site-header" :class="{ compact: view === 'login' || view === 'register' }">
+    <header v-if="view !== 'admin' && view !== 'reader' && view !== 'quiz'" class="site-header" :class="{ compact: view === 'login' || view === 'register' }">
       <button class="brand" type="button" @click="navigate(user ? '/home' : '/')">Litera<span>.</span></button>
       <template v-if="view !== 'login' && view !== 'register'">
         <nav class="desktop-nav" aria-label="Main navigation">
           <button v-if="user" type="button" :class="{ active: view === 'home' }" @click="navigate('/home')">Home</button>
           <button type="button" :class="{ active: view === 'explore' || view === 'book' }" @click="navigate('/explore')">Explore</button>
+          <button v-if="user" type="button" :class="{ active: view === 'library' }" @click="navigate('/library')">My Library</button>
           <button v-if="user" type="button" :class="{ active: view === 'membership' }" @click="navigate('/membership')">Membership</button>
           <button v-else type="button" @click="goToSection('about')">About</button>
         </nav>
@@ -163,21 +176,25 @@ onBeforeUnmount(() => removeEventListener("popstate", handlePopState));
           <button class="icon-button mobile-menu-button" type="button" :aria-expanded="mobileOpen" aria-label="Toggle navigation" @click="mobileOpen = !mobileOpen"><X v-if="mobileOpen" :size="21" /><Menu v-else :size="21" /></button>
         </div>
         <nav v-if="mobileOpen" class="mobile-nav" aria-label="Mobile navigation">
-          <button v-if="user" type="button" @click="navigate('/home')">Home</button><button type="button" @click="navigate('/explore')">Explore</button><button v-if="user" type="button" @click="navigate('/membership')">Membership</button><button v-if="user" type="button" @click="navigate('/profile')">Profile</button>
+          <button v-if="user" type="button" @click="navigate('/home')">Home</button><button type="button" @click="navigate('/explore')">Explore</button><button v-if="user" type="button" @click="navigate('/library')">My Library</button><button v-if="user" type="button" @click="navigate('/membership')">Membership</button><button v-if="user" type="button" @click="navigate('/profile')">Profile</button>
           <button v-if="!user" type="button" @click="navigate(signInPath)">Sign in</button><button v-if="!user" type="button" @click="navigate('/register')">Get started</button>
         </nav>
       </template>
       <button v-else class="quiet-link" type="button" @click="navigate('/')">Back to discover</button>
     </header>
 
-    <AdminShell v-if="view === 'admin' && user?.role === 'ADMIN'" :current="currentPath" :user="user" @navigate="navigate" @logout="logout">
+    <ReaderPage v-if="view === 'reader'" :edition-id="readerEditionId" @navigate="navigate" />
+
+    <AdminShell v-else-if="view === 'admin' && user?.role === 'ADMIN'" :current="currentPath" :user="user" @navigate="navigate" @logout="logout">
       <AdminOverview v-if="currentPath === '/admin'" :user="user" @navigate="navigate" />
       <AdminBooks v-else-if="currentPath === '/admin/books'" @navigate="navigate" />
       <AdminBookDetail v-else-if="/^\/admin\/books\/[^/]+$/.test(currentPath)" :id="decodeURIComponent(currentPath.split('/')[3])" @navigate="navigate" />
+      <AdminLearning v-else-if="/^\/admin\/books\/[^/]+\/learning\/[^/]+$/.test(currentPath)" :book-id="decodeURIComponent(currentPath.split('/')[3])" :edition-id="decodeURIComponent(currentPath.split('/')[5])" @navigate="navigate" />
       <AdminTaxonomy v-else-if="currentPath === '/admin/categories'" kind="categories" />
       <AdminTaxonomy v-else-if="currentPath === '/admin/authors'" kind="authors" />
       <AdminMembers v-else-if="currentPath === '/admin/members'" @navigate="navigate" />
       <AdminMemberDetail v-else-if="/^\/admin\/members\/[^/]+$/.test(currentPath)" :id="decodeURIComponent(currentPath.split('/')[3])" @navigate="navigate" />
+      <AdminCirculation v-else-if="['/admin/circulation', '/admin/loans', '/admin/reservations'].includes(currentPath)" />
       <main v-else class="not-found"><p class="eyebrow">Admin page not found</p><h1>This workspace<br />has no such page.</h1><button type="button" @click="navigate('/admin')">Return to overview <ArrowRight :size="17" /></button></main>
     </AdminShell>
     <main v-else-if="view === 'admin'" class="route-loading" aria-label="Checking admin access"><LoaderCircle class="spin" :size="24" /></main>
@@ -187,7 +204,7 @@ onBeforeUnmount(() => removeEventListener("popstate", handlePopState));
         <div class="hero-copy">
           <p class="eyebrow">Your space to read and grow</p>
           <h1>Read deeper.<br />Learn beyond<br />the page.</h1>
-          <p class="hero-intro">Discover books with purpose, follow ideas that matter, and build a reading habit that stays with you.</p>
+          <p class="hero-intro">Explore a growing e-book collection and read directly in your browser, with progress, bookmarks, and learning activities in one place.</p>
           <form class="discovery-search" role="search" @submit.prevent="discover()">
             <label class="sr-only" for="discovery">Search books, authors, or subjects</label><Search :size="20" aria-hidden="true" />
             <input id="discovery" v-model="query" type="search" placeholder="Search a title, author, or topic" />
@@ -201,7 +218,7 @@ onBeforeUnmount(() => removeEventListener("popstate", handlePopState));
 
       <section id="about" class="about-section">
         <p class="eyebrow">What is Litera?</p>
-        <div class="about-copy"><h2>A digital library built around learning, not endless scrolling.</h2><div><p>Litera helps readers discover meaningful books, understand how each title is available, and find a useful direction through the collection.</p><p>It brings catalog exploration, edition details, and membership access into one calm space, so choosing what to read feels easier.</p></div></div>
+        <div class="about-copy"><h2>A digital library built for reading, not just borrowing.</h2><div><p>Litera is a collection of e-books you can open and read directly on the web. Your page progress and bookmarks stay connected to your account.</p><p>Printed borrowing remains an additional option, while Learning Mode builds quizzes and review around the digital books you read.</p></div></div>
         <div class="about-principles"><span>Discover with purpose</span><span>Understand your access</span><span>Grow through ideas</span></div>
       </section>
 
@@ -220,8 +237,8 @@ onBeforeUnmount(() => removeEventListener("popstate", handlePopState));
         <div class="learning-heading"><p class="eyebrow">More than a reading list</p><h2>Turn every page<br />into progress.</h2><p>Litera gives your curiosity a simple path, from finding the right book to remembering what mattered.</p></div>
         <div class="learning-steps">
           <article><span>01</span><Compass :size="26" /><h3>Find your direction</h3><p>Explore by topic, mood, or the question you want to answer next.</p></article>
-          <article><span>02</span><Bookmark :size="26" /><h3>Understand each title</h3><p>See editions, formats, and access requirements before deciding what fits.</p></article>
-          <article><span>03</span><NotebookPen :size="26" /><h3>Choose your next step</h3><p>Sign in or become a member only when a title requires that level of access.</p></article>
+          <article><span>02</span><Bookmark :size="26" /><h3>Read online</h3><p>Open an available e-book in the browser and return to the page where you stopped.</p></article>
+          <article><span>03</span><NotebookPen :size="26" /><h3>Practice what you read</h3><p>Use chapter quizzes when Learning Mode is available, without interrupting the reading experience.</p></article>
         </div>
       </section>
 
@@ -252,7 +269,7 @@ onBeforeUnmount(() => removeEventListener("popstate", handlePopState));
       <section class="faq-section">
         <div><p class="eyebrow">Questions, answered</p><h2>Before you open<br />the first page.</h2></div>
         <div class="faq-list">
-          <details><summary>What can I do with Litera?<ChevronRight :size="18" /></summary><p>You can explore the catalog, search by title or category, inspect edition availability, manage your account, and apply for membership.</p></details>
+          <details><summary>What can I do with Litera?<ChevronRight :size="18" /></summary><p>You can explore e-books, read available PDFs online, save progress and bookmarks, practice chapter quizzes, and optionally reserve printed copies.</p></details>
           <details><summary>Is Litera only for students?<ChevronRight :size="18" /></summary><p>No. Litera is for anyone who reads to understand, imagine, improve a skill, or simply spend time with a good story.</p></details>
           <details><summary>Do I need an account to explore?<ChevronRight :size="18" /></summary><p>You can browse the public catalog without an account. An account gives you a personal space for your reading journey.</p></details>
           <details><summary>What kinds of books will I find?<ChevronRight :size="18" /></summary><p>The catalog can hold fiction, classics, fantasy, and learning-focused collections, with more subjects added as Litera develops.</p></details>
@@ -264,7 +281,10 @@ onBeforeUnmount(() => removeEventListener("popstate", handlePopState));
 
     <ExplorePage v-else-if="view === 'explore'" @navigate="navigate" />
     <BookDetailPage v-else-if="view === 'book'" :slug="bookSlug" :user="user" @navigate="navigate" />
+    <LearningPage v-else-if="view === 'learn'" :edition-id="readerEditionId" @navigate="navigate" />
+    <QuizPage v-else-if="view === 'quiz'" :quiz-id="readerEditionId" @navigate="navigate" />
     <MembershipPage v-else-if="view === 'membership' && user" :user="user" />
+    <LibraryPage v-else-if="view === 'library' && user" @navigate="navigate" />
     <ProfilePage v-else-if="view === 'profile' && user" :user="user" />
 
     <main v-else-if="view === 'login' || view === 'register'" class="auth-view">
@@ -288,7 +308,8 @@ onBeforeUnmount(() => removeEventListener("popstate", handlePopState));
 
     <main v-else-if="view === 'home' && user" class="home-view">
       <section class="home-intro"><p class="eyebrow">Your reading space</p><h1>Good {{ new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening' }},<br />{{ user.name }}.</h1><p>What's on your mind today?</p><form class="home-search" @submit.prevent="discover()"><Search :size="20" /><input v-model="query" type="search" placeholder="Search a title, author, or idea..." /><button type="submit" aria-label="Search"><ArrowUpRight :size="21" /></button></form></section>
-      <section class="empty-shelf"><div class="empty-number">01</div><div><p class="eyebrow">A place to begin</p><h2>Your next useful idea<br />may be one book away.</h2><p>Explore the live Litera catalog and follow whatever catches your curiosity.</p><button class="line-button" type="button" @click="navigate('/explore')">Explore the catalog <ArrowRight :size="16" /></button></div></section>
+      <ContinueReading @navigate="navigate" />
+      <section class="empty-shelf"><div class="empty-number">01</div><div><p class="eyebrow">A place to begin</p><h2>Your next e-book<br />is ready to open.</h2><p>Explore the digital collection, choose a title, and start reading directly in Litera.</p><button class="line-button" type="button" @click="navigate('/explore')">Browse e-books <ArrowRight :size="16" /></button></div></section>
       <section class="home-books"><div class="section-heading"><div><p class="eyebrow">Recently published</p><h2>Open a new direction.</h2></div><button class="line-button" type="button" @click="navigate('/explore')">View all <ChevronRight :size="16" /></button></div><div v-if="catalogBooks.length" class="book-grid compact-grid"><BookCard v-for="(book, index) in catalogBooks.slice(0, 3)" :key="book.id" :book="book" :index="index" @open="navigate(`/books/${$event}`)" /></div><div v-else class="empty-search"><p>No published books are available yet.</p></div></section>
     </main>
 

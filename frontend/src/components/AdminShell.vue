@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { ArrowLeft, BookOpen, LayoutGrid, Menu, Tags, UserRound, UsersRound, X } from "@lucide/vue";
+import { ArrowLeft, BookOpen, LayoutGrid, Menu, Repeat2, Tags, UserRound, UsersRound, X } from "@lucide/vue";
 import type { User } from "../api";
 
 defineProps<{ current: string; user: User }>();
@@ -21,6 +21,8 @@ function go(path: string) { open.value = false; emit("navigate", path); }
         <button :class="{ active: current === '/admin/authors' }" type="button" @click="go('/admin/authors')"><UserRound :size="18" />Authors</button>
         <p>Membership</p>
         <button :class="{ active: current.startsWith('/admin/members') }" type="button" @click="go('/admin/members')"><UsersRound :size="18" />Members</button>
+        <p>Operations</p>
+        <button :class="{ active: current.startsWith('/admin/circulation') || current.startsWith('/admin/loans') || current.startsWith('/admin/reservations') }" type="button" @click="go('/admin/circulation')"><Repeat2 :size="18" />Circulation</button>
       </nav>
       <div class="admin-account"><span>{{ user.name }}</span><small>{{ user.email }}</small><button type="button" @click="go('/home')"><ArrowLeft :size="16" />Back to Litera</button><button type="button" @click="$emit('logout')">Sign out</button></div>
     </aside>

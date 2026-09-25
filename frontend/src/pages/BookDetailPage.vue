@@ -1,17 +1,21 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { ArrowLeft, ArrowRight, BookOpen, FileText, Library, LockKeyhole } from "@lucide/vue";
-import { api, formatEnum, type BookDetail, type Membership, type User } from "../api";
+import { api, formatEnum, type BookDetail, type Membership, type Reservation, type User } from "../api";
+import { notify } from "../toast";
 
 const props = defineProps<{ slug: string; user: User | null }>();
 const emit = defineEmits<{ navigate: [path: string] }>();
 const book = ref<BookDetail | null>(null);
 const membership = ref<Membership | null>(null);
+const reservations = ref<Reservation[]>([]);
+const reserving = ref("");
 const loading = ref(true);
 const error = ref("");
 
-const digital = computed(() => book.value?.editions.flatMap((edition) => edition.digital) || []);
-const physical = computed(() => (book.value?.editions || []).reduce((total, edition) => ({ total: total.total + edition.physical.total_copies, available: total.available + edition.physical.available_copies }), { total: 0, available: 0 }));
+const digital = computed(() => book.value?.editions.flatMap((edition) => edition.digital.map((file) => ({ ...file, edition_id: edition.id }))) || []);
+const primaryDigital = computed(() => digital.value.find((file) => file.available) || null);
+const physicalEditions = computed(() => (book.value?.editions || []).filter((edition) => edition.physical.total_copies > 0));
 const activeMember = computed(() => membership.value?.status === "ACTIVE");
 
 function hasDigitalAccess(level: "PUBLIC" | "REGISTERED" | "MEMBER") {
@@ -23,13 +27,32 @@ function requestAccess(level: "PUBLIC" | "REGISTERED" | "MEMBER") {
   if (level === "MEMBER") emit("navigate", props.user ? "/membership" : `/login?redirect=${encodeURIComponent(`/books/${props.slug}`)}`);
 }
 
+function existingReservation(editionId: string) {
+  return reservations.value.find((item) => item.edition_id === editionId && ["WAITING", "READY"].includes(item.status));
+}
+
+async function reserve(editionId: string) {
+  reserving.value = editionId;
+  try {
+    const reservation = await api<Reservation>("/api/v1/reservations", { method: "POST", body: JSON.stringify({ edition_id: editionId }) });
+    reservations.value.unshift(reservation);
+    notify(`Reserved. You are #${reservation.queue_position} in the queue.`);
+  } catch (caught) { notify(caught instanceof Error ? caught.message : "Unable to reserve this edition.", "error"); }
+  finally { reserving.value = ""; }
+}
+
 async function load() {
   loading.value = true;
   error.value = "";
   try {
     book.value = await api<BookDetail>(`/api/v1/books/${encodeURIComponent(props.slug)}`);
     if (props.user) {
-      try { membership.value = (await api<{ membership: Membership | null }>("/api/v1/memberships/me")).membership; }
+      try {
+        [membership.value, reservations.value] = await Promise.all([
+          api<{ membership: Membership | null }>("/api/v1/memberships/me").then((result) => result.membership),
+          api<Reservation[]>("/api/v1/reservations/me"),
+        ]);
+      }
       catch { membership.value = null; }
     }
   } catch (caught) { error.value = caught instanceof Error ? caught.message : "Unable to load this book."; }
@@ -55,19 +78,29 @@ onMounted(load);
           <div class="primary-tags"><span>{{ formatEnum(book.book_type) }}</span><span>{{ book.language.toUpperCase() }}</span></div>
           <p v-if="book.description" class="description">{{ book.description }}</p>
           <p v-else class="description muted">A description has not been added for this title yet.</p>
+          <div v-if="primaryDigital" class="read-actions">
+            <button v-if="hasDigitalAccess(primaryDigital.access_level)" type="button" @click="emit('navigate', '/read/' + primaryDigital.edition_id)"><BookOpen :size="18" /> Read online <ArrowRight :size="17" /></button>
+            <button v-else type="button" @click="requestAccess(primaryDigital.access_level)"><LockKeyhole :size="17" /> {{ primaryDigital.access_level === 'REGISTERED' ? 'Sign in to read' : 'Join to read' }} <ArrowRight :size="17" /></button>
+            <small>Open this e-book directly in the Litera reader.</small>
+          </div>
         </div>
       </section>
 
       <section class="availability-section">
-        <div class="availability-heading"><p class="eyebrow">Ways to read</p><h2>Availability</h2></div>
+        <div class="availability-heading"><p class="eyebrow">Choose your format</p><h2>Read this book</h2></div>
         <div class="availability-list">
-          <article v-for="(item, index) in digital" :key="`${item.file_type}-${item.access_level}-${index}`">
-            <FileText :size="25" /><div><span>Digital / {{ item.file_type }}</span><h3>{{ item.access_level === 'PUBLIC' ? 'Available to everyone' : item.access_level === 'REGISTERED' ? 'Registered reader access' : 'Member access' }}</h3><p v-if="hasDigitalAccess(item.access_level)">Your access is confirmed. The Litera reader will arrive in the next phase.</p><p v-else>{{ item.access_level === 'REGISTERED' ? 'Sign in to access this digital edition.' : 'This edition is available to active Litera members.' }}</p><button v-if="!hasDigitalAccess(item.access_level)" type="button" @click="requestAccess(item.access_level)">{{ item.access_level === 'REGISTERED' ? 'Sign in' : 'View membership' }} <ArrowRight :size="16" /></button><span v-else class="availability-note">Reader coming next phase</span></div>
+          <article v-for="item in digital" :key="item.id">
+            <FileText :size="25" /><div><span>Digital / {{ item.file_type }}</span><h3>{{ item.access_level === 'PUBLIC' ? 'Available to everyone' : item.access_level === 'REGISTERED' ? 'Registered reader access' : 'Member access' }}</h3><p v-if="!item.available">This edition is still being prepared.</p><p v-else-if="hasDigitalAccess(item.access_level)">Open the digital edition and continue from where you left off.</p><p v-else>{{ item.access_level === 'REGISTERED' ? 'Sign in to access this digital edition.' : 'This edition is available to active Litera members.' }}</p><button v-if="item.available && hasDigitalAccess(item.access_level)" type="button" @click="emit('navigate', `/read/${item.edition_id}`)">Read now <ArrowRight :size="16" /></button><button v-else-if="item.available" type="button" @click="requestAccess(item.access_level)">{{ item.access_level === 'REGISTERED' ? 'Sign in' : 'View membership' }} <ArrowRight :size="16" /></button><span v-else class="availability-note">{{ formatEnum(item.processing_status) }}</span></div>
           </article>
-          <article v-if="physical.total">
-            <Library :size="25" /><div><span>Physical</span><h3>{{ physical.available }} of {{ physical.total }} available</h3><p>{{ physical.available ? 'Copies are on the shelf. Borrowing will be introduced in a future phase.' : 'All physical copies are currently unavailable.' }}</p><span class="availability-note">Borrowing not available yet</span></div>
+          <article v-for="edition in physicalEditions" :key="`physical-${edition.id}`">
+            <Library :size="25" /><div><span>Printed copy / optional</span><h3>{{ edition.physical.available_copies }} of {{ edition.physical.total_copies }} copies available</h3>
+              <template v-if="existingReservation(edition.id)"><p>{{ existingReservation(edition.id)?.status === 'READY' ? 'Your copy is ready for pickup.' : `Reserved. You're #${existingReservation(edition.id)?.queue_position} in the queue.` }}</p><button type="button" @click="emit('navigate', '/library')">View My Library <ArrowRight :size="16" /></button></template>
+              <template v-else-if="activeMember"><p>{{ edition.physical.available_copies ? 'A copy is currently on the shelf.' : 'All copies are in use. You can still join the reservation queue.' }}</p><button type="button" :disabled="reserving === edition.id" @click="reserve(edition.id)">{{ reserving === edition.id ? 'Reserving...' : 'Reserve' }} <ArrowRight :size="16" /></button></template>
+              <template v-else-if="user"><p>Physical borrowing requires an active membership.</p><button type="button" @click="emit('navigate', '/membership')">View membership <ArrowRight :size="16" /></button></template>
+              <template v-else><p>Sign in and become a member to borrow physical books.</p><button type="button" @click="emit('navigate', `/login?redirect=${encodeURIComponent(`/books/${slug}`)}`)">Sign in <ArrowRight :size="16" /></button></template>
+            </div>
           </article>
-          <article v-if="!digital.length && !physical.total">
+          <article v-if="!digital.length && !physicalEditions.length">
             <LockKeyhole :size="25" /><div><span>Availability</span><h3>No reading edition yet</h3><p>This title is in the catalog, but no digital file or physical copy is currently available.</p></div>
           </article>
         </div>
@@ -97,6 +130,9 @@ onMounted(load);
 .primary-tags span { padding: 7px 10px; background: #e3e8e4; font-size: .7rem; text-transform: uppercase; }
 .description { max-width: 680px; margin: 35px 0 0; color: #545c57; line-height: 1.8; white-space: pre-line; }
 .description.muted { color: #858b86; }
+.read-actions { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; margin-top: 30px; }
+.read-actions button { display: inline-flex; gap: 9px; align-items: center; min-height: 46px; padding: 0 17px; background: #173d32; color: white; }
+.read-actions small { color: #727a74; }
 .availability-section, .edition-section { display: grid; grid-template-columns: .65fr 1.35fr; gap: 9vw; padding: 110px 4vw; border-top: 1px solid #d3d7d3; }
 .availability-heading h2, .edition-section h2 { margin: 0; font-size: clamp(2rem, 3.5vw, 3.5rem); font-weight: 560; }
 .availability-list { border-top: 1px solid #c9ceca; }
@@ -105,6 +141,7 @@ onMounted(load);
 .availability-list h3 { margin: 8px 0 10px; font-size: 1.18rem; }
 .availability-list p { max-width: 570px; margin: 0; color: #69706b; line-height: 1.6; }
 .availability-list button { display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; padding: 8px 0; border-bottom: 1px solid; background: transparent; }
+.availability-list button:disabled { cursor: wait; opacity: .55; }
 .availability-note { display: inline-block; margin-top: 17px; color: #8a8f8b; font-size: .72rem; }
 .edition-list article { padding: 25px 0; border-top: 1px solid #c9ceca; }
 .edition-list dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 45px; margin: 10px 0 0; }
