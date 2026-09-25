@@ -38,11 +38,19 @@ class LearningConflict(Exception):
 def _validate_questions(questions: list[QuestionInput]) -> None:
     if not questions:
         raise LearningConflict("A quiz needs at least one question")
+    normalized_questions = []
     for question in questions:
+        normalized_question = " ".join(question.question.casefold().split())
+        if not normalized_question or normalized_question in normalized_questions:
+            raise LearningConflict("Quiz questions must be non-empty and unique")
+        normalized_questions.append(normalized_question)
         if len(question.options) < 2:
             raise LearningConflict("Every question needs at least two options")
         if sum(option.is_correct for option in question.options) != 1:
             raise LearningConflict("Every question must have exactly one correct option")
+        options = [" ".join(option.option_text.casefold().split()) for option in question.options]
+        if any(not option for option in options) or len(options) != len(set(options)):
+            raise LearningConflict("Every question needs unique non-empty options")
 
 
 def _add_questions(quiz: Quiz, questions: list[QuestionInput]) -> None:
@@ -114,6 +122,40 @@ def create_quiz(session: Session, chapter_id: uuid.UUID, data: QuizCreate, admin
     )
     _add_questions(quiz, data.questions)
     session.add(quiz)
+    try:
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    return get_admin_quiz(session, quiz.id)
+
+
+def save_ai_quiz(
+    session: Session,
+    chapter: Chapter,
+    data: QuizCreate,
+    admin: User,
+    model: str,
+    *,
+    quiz: Quiz | None = None,
+) -> dict:
+    _validate_questions(data.questions)
+    if chapter.edition.book.book_type not in LEARNING_BOOK_TYPES:
+        raise LearningConflict("Learning Mode is not enabled for this book type")
+    if quiz:
+        if quiz.is_published or repository.attempt_count(session, quiz.id):
+            raise LearningConflict("Quiz history prevents in-place regeneration")
+        quiz.questions.clear()
+        session.flush()
+    else:
+        quiz = Quiz(chapter=chapter, created_by=admin.id)
+        session.add(quiz)
+    quiz.title = data.title.strip()
+    quiz.difficulty = data.difficulty
+    quiz.generated_by = QuizGeneratedBy.AI
+    quiz.ai_model = model
+    quiz.is_published = False
+    _add_questions(quiz, data.questions)
     try:
         session.commit()
     except Exception:

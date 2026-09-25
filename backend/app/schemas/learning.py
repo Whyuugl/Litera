@@ -32,6 +32,16 @@ class QuizUpdate(BaseModel):
     questions: list[QuestionInput] | None = Field(default=None, min_length=1)
 
 
+class QuizGenerateRequest(BaseModel):
+    difficulty: QuizDifficulty = QuizDifficulty.MEDIUM
+    question_count: int = Field(default=5, ge=3, le=20)
+
+
+class QuizRegenerateRequest(BaseModel):
+    difficulty: QuizDifficulty | None = None
+    question_count: int | None = Field(default=None, ge=3, le=20)
+
+
 class AdminOptionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID

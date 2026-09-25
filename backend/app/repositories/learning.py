@@ -3,7 +3,7 @@ import uuid
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload, selectinload
 
-from app.models import Chapter, Edition, Quiz, QuizAnswer, QuizAttempt, QuizQuestion
+from app.models import Chapter, Edition, Quiz, QuizAnswer, QuizAttempt, QuizGeneratedBy, QuizQuestion
 
 
 def get_quiz(session: Session, quiz_id: uuid.UUID, *, published_only: bool = False) -> Quiz | None:
@@ -28,6 +28,22 @@ def chapter_quizzes(session: Session, chapter_id: uuid.UUID, *, published_only: 
 
 def attempt_count(session: Session, quiz_id: uuid.UUID) -> int:
     return session.scalar(select(func.count()).select_from(QuizAttempt).where(QuizAttempt.quiz_id == quiz_id)) or 0
+
+
+def ai_draft(session: Session, chapter_id: uuid.UUID, *, exclude_id: uuid.UUID | None = None) -> Quiz | None:
+    statement = select(Quiz).where(
+        Quiz.chapter_id == chapter_id,
+        Quiz.generated_by == QuizGeneratedBy.AI,
+        Quiz.is_published.is_(False),
+    )
+    if exclude_id:
+        statement = statement.where(Quiz.id != exclude_id)
+    return session.scalar(
+        statement.options(
+            joinedload(Quiz.chapter).joinedload(Chapter.edition).joinedload(Edition.book),
+            selectinload(Quiz.questions).selectinload(QuizQuestion.options),
+        ).order_by(Quiz.created_at.desc()).limit(1)
+    )
 
 
 def get_attempt(session: Session, attempt_id: uuid.UUID, user_id: uuid.UUID | None = None, *, lock: bool = False) -> QuizAttempt | None:

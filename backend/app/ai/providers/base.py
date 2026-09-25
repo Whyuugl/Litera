@@ -20,3 +20,6 @@ class LLMProvider(ABC):
     @abstractmethod
     async def generate(self, system: str, prompt: str) -> GeneratedText:
         raise NotImplementedError
+
+    async def generate_structured(self, system: str, prompt: str) -> GeneratedText:
+        return await self.generate(system, prompt)
