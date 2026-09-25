@@ -20,7 +20,6 @@ from app.schemas.catalog import (
     CategoryResponse,
     CategoryUpdate,
     DigitalFileAdminResponse,
-    DigitalFileCreate,
     DigitalFileUpdate,
     EditionAdminResponse,
     EditionCreate,
@@ -179,23 +178,6 @@ def delete_edition(edition_id: uuid.UUID, session: DatabaseSession, _: AdminUser
     return Response(status_code=204)
 
 
-@router.post(
-    "/editions/{edition_id}/digital-files",
-    response_model=DigitalFileAdminResponse,
-    status_code=201,
-)
-def create_digital_file(
-    edition_id: uuid.UUID,
-    data: DigitalFileCreate,
-    session: DatabaseSession,
-    admin: AdminUser,
-):
-    try:
-        return service.create_digital_file(session, edition_id, data, admin)
-    except InvalidCatalogReference as exc:
-        raise _raise_catalog_error(exc) from exc
-
-
 @router.patch("/digital-files/{file_id}", response_model=DigitalFileAdminResponse)
 def update_digital_file(
     file_id: uuid.UUID, data: DigitalFileUpdate, session: DatabaseSession, _: AdminUser
@@ -208,10 +190,14 @@ def update_digital_file(
 
 @router.delete("/digital-files/{file_id}", status_code=204)
 def delete_digital_file(file_id: uuid.UUID, session: DatabaseSession, _: AdminUser):
+    from app.services import digital
+
     try:
-        service.delete_digital_file(session, file_id)
-    except CatalogNotFound as exc:
-        raise _raise_catalog_error(exc) from exc
+        digital.delete_file(session, file_id)
+    except digital.DigitalNotFound as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Digital file not found") from exc
+    except digital.DigitalConflict as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
     return Response(status_code=204)
 
 

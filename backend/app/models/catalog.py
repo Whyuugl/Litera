@@ -40,6 +40,13 @@ class DigitalFileType(str, enum.Enum):
     EPUB = "EPUB"
 
 
+class ProcessingStatus(str, enum.Enum):
+    UPLOADED = "UPLOADED"
+    PROCESSING = "PROCESSING"
+    READY = "READY"
+    FAILED = "FAILED"
+
+
 class AccessLevel(str, enum.Enum):
     PUBLIC = "PUBLIC"
     REGISTERED = "REGISTERED"
@@ -85,6 +92,16 @@ class User(UUIDTimestampMixin, Base):
     created_books: Mapped[list["Book"]] = relationship(back_populates="creator")
     uploaded_files: Mapped[list["DigitalFile"]] = relationship(back_populates="uploader")
     refresh_sessions: Mapped[list["RefreshSession"]] = relationship(back_populates="user")
+    loans: Mapped[list["Loan"]] = relationship(
+        back_populates="user", foreign_keys="Loan.user_id"
+    )
+    processed_loans: Mapped[list["Loan"]] = relationship(
+        back_populates="processor", foreign_keys="Loan.processed_by"
+    )
+    reservations: Mapped[list["Reservation"]] = relationship(back_populates="user")
+    reading_progress: Mapped[list["ReadingProgress"]] = relationship(back_populates="user")
+    bookmarks: Mapped[list["Bookmark"]] = relationship(back_populates="user")
+    quiz_attempts: Mapped[list["QuizAttempt"]] = relationship(back_populates="user")
 
 
 class Membership(UUIDTimestampMixin, Base):
@@ -178,6 +195,11 @@ class Edition(UUIDTimestampMixin, Base):
     book: Mapped[Book] = relationship(back_populates="editions")
     digital_files: Mapped[list["DigitalFile"]] = relationship(back_populates="edition")
     physical_copies: Mapped[list["BookCopy"]] = relationship(back_populates="edition")
+    reservations: Mapped[list["Reservation"]] = relationship(back_populates="edition")
+    chapters: Mapped[list["Chapter"]] = relationship(back_populates="edition")
+    reading_progress: Mapped[list["ReadingProgress"]] = relationship(back_populates="edition")
+    bookmarks: Mapped[list["Bookmark"]] = relationship(back_populates="edition")
+    ai_summaries: Mapped[list["AISummary"]] = relationship(back_populates="edition")
 
 
 class DigitalFile(UUIDTimestampMixin, Base):
@@ -185,16 +207,30 @@ class DigitalFile(UUIDTimestampMixin, Base):
 
     edition_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("editions.id"), index=True)
     file_url: Mapped[str] = mapped_column(String)
+    storage_key: Mapped[Optional[str]] = mapped_column(String, unique=True)
+    original_filename: Mapped[Optional[str]] = mapped_column(String)
+    mime_type: Mapped[Optional[str]] = mapped_column(String)
     file_type: Mapped[DigitalFileType] = mapped_column(
         Enum(DigitalFileType, name="digital_file_type")
     )
     file_size: Mapped[Optional[int]] = mapped_column(BigInteger)
     access_level: Mapped[AccessLevel] = mapped_column(Enum(AccessLevel, name="access_level"))
+    allow_download: Mapped[bool] = mapped_column(default=False, server_default="false")
+    processing_status: Mapped[ProcessingStatus] = mapped_column(
+        Enum(ProcessingStatus, name="processing_status"),
+        default=ProcessingStatus.UPLOADED,
+        server_default=ProcessingStatus.UPLOADED.value,
+    )
+    processing_error: Mapped[Optional[str]] = mapped_column(Text)
+    processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     uploaded_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
     uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     edition: Mapped[Edition] = relationship(back_populates="digital_files")
     uploader: Mapped[User] = relationship(back_populates="uploaded_files")
+    pages: Mapped[list["DocumentPage"]] = relationship(
+        back_populates="digital_file", cascade="all, delete-orphan"
+    )
 
 
 class BookCopy(UUIDTimestampMixin, Base):
@@ -212,3 +248,5 @@ class BookCopy(UUIDTimestampMixin, Base):
     acquired_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
     edition: Mapped[Edition] = relationship(back_populates="physical_copies")
+    loans: Mapped[list["Loan"]] = relationship(back_populates="book_copy")
+    reservation_holds: Mapped[list["Reservation"]] = relationship(back_populates="book_copy")

@@ -6,7 +6,7 @@ import uuid
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.models import Author, Book, BookCopy, BookCopyStatus, Category, DigitalFile, Edition, User
+from app.models import Author, Book, BookCopy, BookCopyStatus, Category, DigitalFile, Edition, ProcessingStatus, User
 from app.repositories import catalog as repository
 from app.schemas.catalog import (
     AuthorCreate,
@@ -213,7 +213,11 @@ def _book_detail(book: Book) -> BookDetail:
                 language=edition.language,
                 digital=[
                     DigitalAvailability(
-                        file_type=file.file_type, access_level=file.access_level
+                        id=file.id,
+                        file_type=file.file_type,
+                        access_level=file.access_level,
+                        processing_status=file.processing_status,
+                        available=file.processing_status == ProcessingStatus.READY,
                     )
                     for file in edition.digital_files
                 ],
@@ -417,5 +421,7 @@ def delete_book_copy(session: Session, copy_id: uuid.UUID) -> None:
     copy = repository.get_book_copy(session, copy_id)
     if not copy:
         raise CatalogNotFound
+    if copy.status != BookCopyStatus.AVAILABLE:
+        raise CatalogConflict("Only available copies can be deleted")
     session.delete(copy)
     _commit(session)

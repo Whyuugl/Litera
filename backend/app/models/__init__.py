@@ -13,13 +13,28 @@ from app.models.catalog import (
     Edition,
     Membership,
     MembershipStatus,
+    ProcessingStatus,
     User,
     UserRole,
 )
 from app.models.auth import RefreshSession
+from app.models.circulation import Loan, LoanStatus, Reservation, ReservationStatus
+from app.models.digital import Bookmark, Chapter, DocumentPage, ReadingProgress
+from app.models.learning import (
+    QuestionType,
+    Quiz,
+    QuizAnswer,
+    QuizAttempt,
+    QuizDifficulty,
+    QuizGeneratedBy,
+    QuizOption,
+    QuizQuestion,
+)
+from app.models.ai import AISummary, SpoilerMode, SummaryStatus, SummaryType
 
 __all__ = [
     "AccessLevel",
+    "AISummary",
     "Author",
     "Book",
     "BookAuthor",
@@ -27,13 +42,33 @@ __all__ = [
     "BookCopyStatus",
     "BookStatus",
     "BookType",
+    "Bookmark",
     "Category",
+    "Chapter",
     "DigitalFile",
     "DigitalFileType",
+    "DocumentPage",
     "Edition",
     "Membership",
     "MembershipStatus",
+    "ProcessingStatus",
+    "Loan",
+    "LoanStatus",
     "RefreshSession",
+    "Reservation",
+    "ReservationStatus",
+    "SpoilerMode",
+    "SummaryStatus",
+    "SummaryType",
+    "ReadingProgress",
+    "QuestionType",
+    "Quiz",
+    "QuizAnswer",
+    "QuizAttempt",
+    "QuizDifficulty",
+    "QuizGeneratedBy",
+    "QuizOption",
+    "QuizQuestion",
     "User",
     "UserRole",
 ]

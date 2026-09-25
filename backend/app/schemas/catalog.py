@@ -4,7 +4,7 @@ from typing import Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models import AccessLevel, BookCopyStatus, BookStatus, BookType, DigitalFileType
+from app.models import AccessLevel, BookCopyStatus, BookStatus, BookType, DigitalFileType, ProcessingStatus
 
 
 T = TypeVar("T")
@@ -146,8 +146,10 @@ class BookSummary(BaseModel):
 
 
 class DigitalAvailability(BaseModel):
+    id: uuid.UUID
     file_type: DigitalFileType
     access_level: AccessLevel
+    processing_status: ProcessingStatus
     available: bool = True
 
 
@@ -228,6 +230,7 @@ class DigitalFileUpdate(BaseModel):
     file_type: DigitalFileType | None = None
     file_size: int | None = Field(default=None, ge=0)
     access_level: AccessLevel | None = None
+    allow_download: bool | None = None
 
     _normalize_url = field_validator("file_url")(_required_text)
 
@@ -241,6 +244,12 @@ class DigitalFileAdminResponse(BaseModel):
     file_type: DigitalFileType
     file_size: int | None
     access_level: AccessLevel
+    original_filename: str | None
+    mime_type: str | None
+    allow_download: bool
+    processing_status: ProcessingStatus
+    processing_error: str | None
+    processed_at: datetime | None
     uploaded_at: datetime
 
 
@@ -253,11 +262,17 @@ class BookCopyCreate(BaseModel):
 
     _normalize_barcode = field_validator("barcode")(_required_text)
 
+    @field_validator("status")
+    @classmethod
+    def manual_status_only(cls, value: BookCopyStatus) -> BookCopyStatus:
+        if value in {BookCopyStatus.BORROWED, BookCopyStatus.RESERVED, BookCopyStatus.LOST}:
+            raise ValueError("Circulation status must be changed through a circulation action")
+        return value
+
 
 class BookCopyUpdate(BaseModel):
     barcode: str | None = Field(default=None, min_length=1, max_length=255)
     shelf_location: str | None = Field(default=None, max_length=255)
-    status: BookCopyStatus | None = None
     condition: str | None = Field(default=None, max_length=255)
     acquired_at: datetime | None = None
 

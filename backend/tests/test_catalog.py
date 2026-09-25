@@ -130,7 +130,7 @@ class CatalogApiTest(unittest.TestCase):
             },
         )
         self.assertEqual(digital.status_code, 201)
-        for barcode, copy_status in (("COPY-1", "AVAILABLE"), ("COPY-2", "BORROWED")):
+        for barcode, copy_status in (("COPY-1", "AVAILABLE"), ("COPY-2", "MAINTENANCE")):
             self.assertEqual(
                 self.client.post(
                     f"/api/v1/admin/editions/{edition['id']}/copies",
