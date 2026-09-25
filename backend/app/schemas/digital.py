@@ -53,6 +53,13 @@ class ReaderResponse(BaseModel):
     summary_chapter_ids: list[uuid.UUID]
 
 
+class ReaderPageResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    page_number: int
+    content: str
+
+
 class ProgressUpdate(BaseModel):
     current_page: int = Field(ge=1)
     chapter_id: uuid.UUID | None = None

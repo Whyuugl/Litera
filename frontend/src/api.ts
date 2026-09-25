@@ -90,6 +90,7 @@ export type AdminLoan = Loan & { user: { id: string; name: string; email: string
 export type LoanPage = Page<AdminLoan>;
 export type Chapter = { id: string; edition_id: string; chapter_number: number; title: string; page_start: number; page_end: number };
 export type Reader = { edition_id: string; digital_file_id: string; access_level: Edition["digital"][number]["access_level"]; processing_status: ProcessingStatus; page_count: number; book: { id: string; title: string; slug: string; cover_url: string | null }; chapters: Chapter[]; learning_available: boolean; summary_chapter_ids: string[] };
+export type ReaderPage = { page_number: number; content: string };
 export type ReadingProgress = { id: string; user_id: string; edition_id: string; chapter_id: string | null; progress_percentage: number; current_page: number; position_data: Record<string, unknown> | null; started_at: string; last_read_at: string; completed_at: string | null };
 export type ReadingProgressItem = ReadingProgress & { book: Reader["book"]; chapter: Chapter | null };
 export type ReaderBookmark = { id: string; edition_id: string; chapter_id: string | null; page_number: number; position_data: Record<string, unknown> | null; note: string | null; created_at: string };

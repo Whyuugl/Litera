@@ -117,6 +117,9 @@ class DigitalReaderApiTest(unittest.TestCase):
         self.assertEqual(metadata.status_code, 200, metadata.text)
         self.assertEqual(metadata.json()["page_count"], 3)
         self.assertEqual(metadata.json()["chapters"][0]["title"], "Full Document")
+        pages = self.client.get(f"/api/v1/editions/{self.edition_id}/pages")
+        self.assertEqual(pages.status_code, 200, pages.text)
+        self.assertEqual([item["page_number"] for item in pages.json()], [1, 2, 3])
 
         content = self.client.get(
             f"/api/v1/digital-files/{file_id}/content",
@@ -132,7 +135,9 @@ class DigitalReaderApiTest(unittest.TestCase):
             f"/api/v1/admin/digital-files/{file_id}", headers=self.headers(self.admin), json={"access_level": "REGISTERED"}
         )
         self.assertEqual(self.client.get(f"/api/v1/digital-files/{file_id}/content").status_code, 403)
+        self.assertEqual(self.client.get(f"/api/v1/editions/{self.edition_id}/pages").status_code, 403)
         self.assertEqual(self.client.get(f"/api/v1/digital-files/{file_id}/content", headers=self.headers(self.user)).status_code, 200)
+        self.assertEqual(self.client.get(f"/api/v1/editions/{self.edition_id}/pages", headers=self.headers(self.user)).status_code, 200)
         self.client.patch(
             f"/api/v1/admin/digital-files/{file_id}", headers=self.headers(self.admin), json={"access_level": "MEMBER"}
         )
@@ -153,10 +158,11 @@ class DigitalReaderApiTest(unittest.TestCase):
         progress = self.client.put(
             f"/api/v1/reading-progress/{self.edition_id}",
             headers=self.headers(self.user),
-            json={"current_page": 2},
+            json={"current_page": 2, "position_data": {"offset": 0.42}},
         )
         self.assertEqual(progress.status_code, 200, progress.text)
         self.assertAlmostEqual(progress.json()["progress_percentage"], 66.67)
+        self.assertEqual(progress.json()["position_data"], {"offset": 0.42})
         self.assertEqual(
             self.client.put(
                 f"/api/v1/reading-progress/{self.edition_id}",
@@ -177,9 +183,10 @@ class DigitalReaderApiTest(unittest.TestCase):
         bookmark = self.client.post(
             "/api/v1/bookmarks",
             headers=self.headers(self.user),
-            json={"edition_id": self.edition_id, "page_number": 2, "note": "Review"},
+            json={"edition_id": self.edition_id, "page_number": 2, "position_data": {"offset": 0.6}, "note": "Review"},
         )
         self.assertEqual(bookmark.status_code, 201, bookmark.text)
+        self.assertEqual(bookmark.json()["position_data"], {"offset": 0.6})
         bookmark_id = bookmark.json()["id"]
         edited = self.client.patch(
             f"/api/v1/bookmarks/{bookmark_id}", headers=self.headers(self.user), json={"note": "Keep"}

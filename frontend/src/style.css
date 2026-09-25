@@ -188,3 +188,70 @@ button:focus-visible, input:focus-visible { outline: 2px solid #566b5d; outline-
   .discovery-search input { font-size: .86rem; } .discovery-search { gap: 8px; } .discovery-search button { width: 40px; height: 40px; } .benefit-grid { grid-template-columns: 1fr; } .membership-section > svg { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+
+/* Shared application theme. Component styles stay light-first; this layer keeps every route in sync. */
+:root[data-theme="dark"] {
+  color: #e7ece8;
+  background: #171b19;
+  --ink: #e7ece8;
+  --muted: #a7b0aa;
+  --line: #3b443e;
+  --primary: #8eaa98;
+  --primary-soft: #29342e;
+}
+:root[data-theme="dark"] body,
+:root[data-theme="dark"] .site-frame,
+:root[data-theme="dark"] .admin-shell,
+:root[data-theme="dark"] .admin-content,
+:root[data-theme="dark"] .quiz-page { background: #171b19 !important; color: #e7ece8 !important; }
+:root[data-theme="dark"] .site-header { background: #171b19; }
+:root[data-theme="dark"] :is(h1, h2, h3, h4, strong, dd) { color: #edf1ee; }
+:root[data-theme="dark"] :is(p, small, dt, label, .eyebrow, .list-head) { color: #a7b0aa !important; }
+:root[data-theme="dark"] :is(.desktop-nav button, .text-button, .quiet-link, .line-button, .back-link) { color: #d7ddd9 !important; }
+:root[data-theme="dark"] :is(.desktop-nav button, .quiet-link)::after { background: #e7ece8; }
+:root[data-theme="dark"] :is(input, select, textarea) {
+  border-color: #4a554e !important;
+  background: #242a26 !important;
+  color: #edf1ee !important;
+}
+:root[data-theme="dark"] :is(input, textarea)::placeholder { color: #7f8982; }
+:root[data-theme="dark"] .icon-button:hover { background: #29302b; }
+:root[data-theme="dark"] :is(
+  .category-strip, .mobile-nav, .toast, .confirm-dialog, .taxonomy-form,
+  .resource-form, .reason-dialog, .quiz-editor, .edition-block
+) { border-color: #3b443e !important; background: #202522 !important; color: #e7ece8 !important; }
+:root[data-theme="dark"] :is(
+  .learning-section, .explore-intro, .membership-layout, .identity-section,
+  .book-overview, .review-layout, .summary-admin, .ai-quiz-generator,
+  .checkout-panel form
+) { border-color: #3f4a43 !important; background: #232d27 !important; color: #e7ece8 !important; }
+:root[data-theme="dark"] .membership-section { background: #9e5138; color: #fff; }
+:root[data-theme="dark"] :is(.discovery-hero, .audience-section, .membership-section) :is(p, small, .eyebrow) { color: #d5dfd9 !important; }
+:root[data-theme="dark"] :is(.discovery-search, .home-search) { border-color: #4a554e; background: #f0f3f1; color: #171b19; }
+:root[data-theme="dark"] :is(.discovery-search, .home-search) input { background: transparent !important; color: #171b19 !important; }
+:root[data-theme="dark"] :is(.auth-lines span, .catalog-loading span, .book-skeleton span, .book-skeleton i, .detail-skeleton span, .detail-skeleton i, .taxonomy-loading span, .member-loading span, .review-loading span) { background: #29312c !important; }
+:root[data-theme="dark"] :is(
+  .primary-tags span, .status-badge, .recent-list em, .member-list em,
+  .detail-heading em, .resource-row em, .locked-note, .copy-status,
+  .ai-draft-notice, .quiz-list article span
+) { background: #2b332e !important; color: #bec7c1 !important; }
+:root[data-theme="dark"] :is(.progress, .library-page .reading-progress, .question-progress) { background: #343d37; }
+:root[data-theme="dark"] :is(.question-stage label:hover, .question-stage label.selected) { background: #26372e !important; }
+:root[data-theme="dark"] :is(.question-stage nav button.answered, .review article section) { background: #232d27 !important; }
+:root[data-theme="dark"] .admin-shell > aside { border-color: #39423c !important; background: #1e2420 !important; }
+:root[data-theme="dark"] .admin-shell nav button { color: #c8d0cb !important; }
+:root[data-theme="dark"] .admin-shell nav button.active { background: #365847 !important; color: #fff !important; }
+:root[data-theme="dark"] .drawer-toggle { border-color: #455048 !important; background: #242a26 !important; color: #edf1ee; }
+:root[data-theme="dark"] :is(
+  .about-principles, .category-strip, .site-footer, .home-intro, .empty-shelf,
+  .library-tabs, .library-list, .library-list article, .continue-list,
+  .continue-list article, .question-stage label, .question-stage footer button,
+  .question-stage nav button, .overview-counts, .recent-list, .recent-list button,
+  .taxonomy-list, .taxonomy-list article, .member-list, .member-list > button,
+  .circulation-page > header, .attention-grid, .attention-grid button,
+  .quick-actions > div:last-child, .quick-actions button, .circulation-list,
+  .circulation-list article, .review-actions, .edition-block, .edition-block > header,
+  .resource-columns > section, .resource-row, .question-editor > article, .quiz-preview,
+  .quiz-preview article, .quiz-list article
+) { border-color: #3b443e !important; }
+:root[data-theme="dark"] :is(.form-error, .file-error, .action-error, .circulation-error, .overview-error, .ai-error) { color: #ef9a8d !important; }

@@ -29,6 +29,14 @@ def page_count(session: Session, file_id: uuid.UUID) -> int:
     ) or 0
 
 
+def list_pages(session: Session, file_id: uuid.UUID) -> list[DocumentPage]:
+    return list(session.scalars(
+        select(DocumentPage)
+        .where(DocumentPage.digital_file_id == file_id)
+        .order_by(DocumentPage.page_number)
+    ).all())
+
+
 def list_chapters(session: Session, edition_id: uuid.UUID) -> list[Chapter]:
     return list(session.scalars(
         select(Chapter).where(Chapter.edition_id == edition_id).order_by(Chapter.chapter_number)

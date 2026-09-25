@@ -296,6 +296,14 @@ def get_reader(session: Session, edition_id: uuid.UUID, user: User | None):
     }
 
 
+def get_reader_pages(session: Session, edition_id: uuid.UUID, user: User | None):
+    file = repository.get_edition_file(session, edition_id, ready_only=True)
+    if not file:
+        raise DigitalNotFound
+    authorize_file(session, file, user)
+    return repository.list_pages(session, file.id)
+
+
 def get_content_file(session: Session, file_id: uuid.UUID, user: User | None) -> tuple[DigitalFile, Path]:
     file = repository.get_file(session, file_id)
     if not file:

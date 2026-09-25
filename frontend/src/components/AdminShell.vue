@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { ArrowLeft, BookOpen, LayoutGrid, Menu, Repeat2, Tags, UserRound, UsersRound, X } from "@lucide/vue";
+import { ArrowLeft, BookOpen, LayoutGrid, Menu, Moon, Repeat2, Sun, Tags, UserRound, UsersRound, X } from "@lucide/vue";
 import type { User } from "../api";
 
-defineProps<{ current: string; user: User }>();
-const emit = defineEmits<{ navigate: [path: string]; logout: [] }>();
+defineProps<{ current: string; user: User; darkMode: boolean }>();
+const emit = defineEmits<{ navigate: [path: string]; logout: []; toggleTheme: [] }>();
 const open = ref(false);
 function go(path: string) { open.value = false; emit("navigate", path); }
 </script>
@@ -24,7 +24,7 @@ function go(path: string) { open.value = false; emit("navigate", path); }
         <p>Operations</p>
         <button :class="{ active: current.startsWith('/admin/circulation') || current.startsWith('/admin/loans') || current.startsWith('/admin/reservations') }" type="button" @click="go('/admin/circulation')"><Repeat2 :size="18" />Circulation</button>
       </nav>
-      <div class="admin-account"><span>{{ user.name }}</span><small>{{ user.email }}</small><button type="button" @click="go('/home')"><ArrowLeft :size="16" />Back to Litera</button><button type="button" @click="$emit('logout')">Sign out</button></div>
+      <div class="admin-account"><span>{{ user.name }}</span><small>{{ user.email }}</small><button type="button" @click="emit('toggleTheme')"><Sun v-if="darkMode" :size="16" /><Moon v-else :size="16" />{{ darkMode ? 'Light mode' : 'Dark mode' }}</button><button type="button" @click="go('/home')"><ArrowLeft :size="16" />Back to Litera</button><button type="button" @click="$emit('logout')">Sign out</button></div>
     </aside>
     <div v-if="open" class="drawer-shade" @click="open = false"></div>
     <section class="admin-content"><slot /></section>

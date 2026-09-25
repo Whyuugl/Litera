@@ -29,7 +29,7 @@ The original PHP project is preserved under `legacy/perpus-app/` as a historical
 
 ## Development Status
 
-Litera currently includes the project foundation, catalog database schema, authentication, membership lifecycle, catalog API, user and admin workspaces, physical circulation, a secure PDF reader, Learning Mode with manually authored chapter quizzes, and cached AI-generated chapter/book summaries. Fines, notifications, EPUB reading, OCR, RAG, AI quiz generation, and ML recommendations are not implemented yet.
+Litera currently includes the project foundation, catalog database schema, authentication, membership lifecycle, catalog API, user and admin workspaces, physical circulation, a native extracted-text reader, Learning Mode, cached AI summaries, and admin-reviewed AI quiz drafts. Fines, notifications, EPUB reading, OCR, RAG, AI chat, and ML recommendations are not implemented yet.
 
 ## Backend Setup
 
@@ -75,6 +75,14 @@ Summary generation is an optional admin-controlled feature. Configure AI_PROVIDE
 
 Summaries are generated only from extracted Litera page content. Long chapters are processed in bounded chunks, while book summaries combine fresh chapter summaries hierarchically. A SHA-256 source hash prevents repeated generation and marks summaries stale when extracted content changes. Fiction uses the spoiler-free prompt policy. Only admins generate or regenerate summaries, and only active members can read persisted, current READY results.
 
+## AI Quiz Drafts
+
+Admins can generate a 3-20 question quiz draft from an eligible chapter at `POST /api/v1/admin/chapters/{chapter_id}/quiz/generate` and regenerate an unpublished AI draft at `POST /api/v1/admin/quizzes/{quiz_id}/regenerate`. The backend resolves extracted chapter content itself; clients cannot submit arbitrary source text.
+
+The provider returns JSON mode output that is validated with strict Pydantic schemas and the existing quiz-domain validation before one atomic persistence transaction. Generated quizzes use the normal `quizzes`, `quiz_questions`, and `quiz_options` tables with `generated_by=AI` and `is_published=false`. Admins review and edit them in the existing Quiz Editor, and publishing and student attempts continue through the Phase 8 Quiz Engine without any LLM call.
+
+Quiz source is capped at 16,000 normalized characters. Oversized chapters are sampled across five evenly distributed sections instead of taking only the beginning. Generation is admin-only, request size is bounded, repeated clicks surface the existing draft, and a per-process chapter lock prevents concurrent duplicate requests. Regeneration updates an untouched draft in place; if attempt history exists, it creates a new draft and preserves the original quiz and attempts.
+
 ## Local Demo Accounts
 
 Create or refresh local demo accounts and catalog data from `backend/`:
@@ -82,6 +90,8 @@ Create or refresh local demo accounts and catalog data from `backend/`:
 ```bash
 python -m scripts.seed_demo
 ```
+
+The seed downloads 16 complete public-domain texts from Project Gutenberg, converts them into locally stored PDFs, and processes them for the Litera reader. Each title has one clearly tracked physical copy; public digital editions have unlimited concurrent access. Internet access is required only the first time each digital title is seeded.
 
 All demo accounts use the password `LiteraDemo123!`:
 

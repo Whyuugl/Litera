@@ -13,6 +13,7 @@ from app.schemas.digital import (
     ProgressListItem,
     ProgressResponse,
     ProgressUpdate,
+    ReaderPageResponse,
     ReaderResponse,
 )
 from app.services import digital
@@ -33,6 +34,14 @@ def _raise(exc: Exception) -> HTTPException:
 def reader(edition_id: uuid.UUID, session: DatabaseSession, user: OptionalUser):
     try:
         return digital.get_reader(session, edition_id, user)
+    except (digital.DigitalNotFound, digital.DigitalAccessDenied) as exc:
+        raise _raise(exc) from exc
+
+
+@router.get("/editions/{edition_id}/pages", response_model=list[ReaderPageResponse])
+def reader_pages(edition_id: uuid.UUID, session: DatabaseSession, user: OptionalUser):
+    try:
+        return digital.get_reader_pages(session, edition_id, user)
     except (digital.DigitalNotFound, digital.DigitalAccessDenied) as exc:
         raise _raise(exc) from exc
 

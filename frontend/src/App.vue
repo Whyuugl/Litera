@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { ArrowRight, ArrowUpRight, BookOpen, Bookmark, ChevronRight, Compass, Eye, EyeOff, Focus, History, LibraryBig, LoaderCircle, LogOut, Menu, NotebookPen, Search, Sparkles, X } from "@lucide/vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { ArrowRight, ArrowUpRight, BookOpen, Bookmark, ChevronRight, Compass, Eye, EyeOff, Focus, History, LibraryBig, LoaderCircle, LogOut, Menu, Moon, NotebookPen, Search, Sparkles, Sun, X } from "@lucide/vue";
 import { api, clearSession, hasSession, saveSession, type BookSummary, type Page, type User } from "./api";
 import BookCard from "./components/BookCard.vue";
 import AdminShell from "./components/AdminShell.vue";
@@ -37,6 +37,14 @@ const loginForm = ref({ email: "", password: "" });
 const registerForm = ref({ name: "", email: "", password: "" });
 const catalogBooks = ref<BookSummary[]>([]);
 const catalogLoading = ref(true);
+const savedTheme = localStorage.getItem("litera_theme") || localStorage.getItem("litera_reader_theme");
+const darkMode = ref(savedTheme ? savedTheme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches);
+
+watch(darkMode, (enabled) => {
+  document.documentElement.dataset.theme = enabled ? "dark" : "light";
+  document.documentElement.style.colorScheme = enabled ? "dark" : "light";
+  localStorage.setItem("litera_theme", enabled ? "dark" : "light");
+}, { immediate: true });
 
 const view = computed<View>(() => {
   if (currentPath.value === "/") return "landing";
@@ -164,6 +172,7 @@ onBeforeUnmount(() => removeEventListener("popstate", handlePopState));
           <button v-else type="button" @click="goToSection('about')">About</button>
         </nav>
         <div class="nav-actions">
+          <button class="icon-button" type="button" :aria-label="darkMode ? 'Use light mode' : 'Use dark mode'" :title="darkMode ? 'Light mode' : 'Dark mode'" @click="darkMode = !darkMode"><Sun v-if="darkMode" :size="18" /><Moon v-else :size="18" /></button>
           <template v-if="user">
             <button v-if="user.role === 'ADMIN'" class="admin-badge" type="button" @click="navigate('/admin')">Admin</button>
             <button class="text-button" type="button" @click="navigate('/profile')">{{ user.name }}</button>
@@ -180,12 +189,12 @@ onBeforeUnmount(() => removeEventListener("popstate", handlePopState));
           <button v-if="!user" type="button" @click="navigate(signInPath)">Sign in</button><button v-if="!user" type="button" @click="navigate('/register')">Get started</button>
         </nav>
       </template>
-      <button v-else class="quiet-link" type="button" @click="navigate('/')">Back to discover</button>
+      <div v-else class="nav-actions"><button class="icon-button" type="button" :aria-label="darkMode ? 'Use light mode' : 'Use dark mode'" :title="darkMode ? 'Light mode' : 'Dark mode'" @click="darkMode = !darkMode"><Sun v-if="darkMode" :size="18" /><Moon v-else :size="18" /></button><button class="quiet-link" type="button" @click="navigate('/')">Back to discover</button></div>
     </header>
 
-    <ReaderPage v-if="view === 'reader'" :edition-id="readerEditionId" @navigate="navigate" />
+    <ReaderPage v-if="view === 'reader'" :edition-id="readerEditionId" :dark-mode="darkMode" @navigate="navigate" @toggle-theme="darkMode = !darkMode" />
 
-    <AdminShell v-else-if="view === 'admin' && user?.role === 'ADMIN'" :current="currentPath" :user="user" @navigate="navigate" @logout="logout">
+    <AdminShell v-else-if="view === 'admin' && user?.role === 'ADMIN'" :current="currentPath" :user="user" :dark-mode="darkMode" @navigate="navigate" @logout="logout" @toggle-theme="darkMode = !darkMode">
       <AdminOverview v-if="currentPath === '/admin'" :user="user" @navigate="navigate" />
       <AdminBooks v-else-if="currentPath === '/admin/books'" @navigate="navigate" />
       <AdminBookDetail v-else-if="/^\/admin\/books\/[^/]+$/.test(currentPath)" :id="decodeURIComponent(currentPath.split('/')[3])" @navigate="navigate" />
@@ -282,7 +291,7 @@ onBeforeUnmount(() => removeEventListener("popstate", handlePopState));
     <ExplorePage v-else-if="view === 'explore'" @navigate="navigate" />
     <BookDetailPage v-else-if="view === 'book'" :slug="bookSlug" :user="user" @navigate="navigate" />
     <LearningPage v-else-if="view === 'learn'" :edition-id="readerEditionId" @navigate="navigate" />
-    <QuizPage v-else-if="view === 'quiz'" :quiz-id="readerEditionId" @navigate="navigate" />
+    <QuizPage v-else-if="view === 'quiz'" :quiz-id="readerEditionId" :dark-mode="darkMode" @navigate="navigate" @toggle-theme="darkMode = !darkMode" />
     <MembershipPage v-else-if="view === 'membership' && user" :user="user" />
     <LibraryPage v-else-if="view === 'library' && user" @navigate="navigate" />
     <ProfilePage v-else-if="view === 'profile' && user" :user="user" />
