@@ -22,6 +22,7 @@ from app.core.security import auth_settings
 from app.services.memberships import membership_duration_days
 from app.services.circulation import loan_duration_days, max_active_loans, reservation_hold_days
 from app.services.digital import max_book_file_size
+from app.services.rag import chunk_limits
 
 
 @asynccontextmanager
@@ -32,6 +33,7 @@ async def lifespan(_: FastAPI):
     max_active_loans()
     reservation_hold_days()
     max_book_file_size()
+    chunk_limits()
     yield
 
 

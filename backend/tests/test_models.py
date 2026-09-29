@@ -34,6 +34,7 @@ class ModelConfigurationTest(unittest.TestCase):
                 "chapters",
                 "reading_progress",
                 "bookmarks",
+                "book_chunks",
             },
         )
 

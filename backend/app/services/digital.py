@@ -6,7 +6,7 @@ from pathlib import Path
 
 from fastapi import UploadFile
 from pypdf import PdfReader
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -19,6 +19,7 @@ from app.models import (
     DocumentPage,
     Edition,
     ProcessingStatus,
+    RAGStatus,
     ReadingProgress,
     Quiz,
     AISummary,
@@ -118,6 +119,9 @@ def _replace_extracted(
     pages: list[str],
     chapters: list[tuple[int, str, int, int]],
 ) -> None:
+    if file.rag_status != RAGStatus.NOT_INDEXED:
+        file.rag_status = RAGStatus.STALE
+        file.rag_error = None
     session.execute(delete(DocumentPage).where(DocumentPage.digital_file_id == file.id))
     session.execute(delete(Chapter).where(Chapter.edition_id == file.edition_id))
     session.add_all([
@@ -420,6 +424,7 @@ def create_chapter(session: Session, edition_id: uuid.UUID, data: ChapterCreate)
     _validate_chapter(session, edition_id, data.page_start, data.page_end)
     chapter = Chapter(edition_id=edition_id, **data.model_dump())
     session.add(chapter)
+    _mark_rag_stale(session, edition_id)
     try:
         session.commit()
     except IntegrityError as exc:
@@ -438,6 +443,7 @@ def update_chapter(session: Session, chapter_id: uuid.UUID, data: ChapterUpdate)
     _validate_chapter(session, chapter.edition_id, start, end)
     for field, value in values.items():
         setattr(chapter, field, value.strip() if field == "title" else value)
+    _mark_rag_stale(session, chapter.edition_id)
     try:
         session.commit()
     except IntegrityError as exc:
@@ -455,6 +461,7 @@ def delete_chapter(session: Session, chapter_id: uuid.UUID) -> None:
     if referenced:
         raise DigitalConflict("Chapter is referenced by reader data")
     session.delete(chapter)
+    _mark_rag_stale(session, chapter.edition_id)
     session.commit()
 
 
@@ -464,3 +471,16 @@ def _validate_chapter(session: Session, edition_id: uuid.UUID, start: int, end: 
     file = repository.get_edition_file(session, edition_id, ready_only=True)
     if not file or end > repository.page_count(session, file.id):
         raise DigitalConflict("Chapter pages are outside this document")
+
+
+def _mark_rag_stale(session: Session, edition_id: uuid.UUID) -> None:
+    if session.scalar(select(DigitalFile.id).where(
+        DigitalFile.edition_id == edition_id,
+        DigitalFile.rag_status == RAGStatus.INDEXING,
+    ).limit(1)):
+        raise DigitalConflict("Chapter mapping cannot change while RAG indexing is in progress")
+    session.execute(
+        update(DigitalFile)
+        .where(DigitalFile.edition_id == edition_id, DigitalFile.rag_status != RAGStatus.NOT_INDEXED)
+        .values(rag_status=RAGStatus.STALE, rag_error=None)
+    )

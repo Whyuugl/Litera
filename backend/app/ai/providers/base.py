@@ -23,3 +23,16 @@ class LLMProvider(ABC):
 
     async def generate_structured(self, system: str, prompt: str) -> GeneratedText:
         return await self.generate(system, prompt)
+
+
+class EmbeddingProvider(ABC):
+    name: str
+    model: str
+    dimensions: int
+
+    @abstractmethod
+    async def embed_batch(self, texts: list[str]) -> list[list[float]]:
+        raise NotImplementedError
+
+    async def embed_text(self, text: str) -> list[float]:
+        return (await self.embed_batch([text]))[0]

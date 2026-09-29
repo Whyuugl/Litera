@@ -4,7 +4,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models import AccessLevel, ProcessingStatus
+from app.models import AccessLevel, ProcessingStatus, RAGStatus
 
 
 class ReaderBook(BaseModel):
@@ -123,4 +123,8 @@ class DigitalUploadResponse(BaseModel):
     processing_status: ProcessingStatus
     processing_error: str | None
     processed_at: datetime | None
+    rag_status: RAGStatus
+    rag_error: str | None
+    rag_indexed_at: datetime | None
+    rag_embedding_model: str | None
     uploaded_at: datetime

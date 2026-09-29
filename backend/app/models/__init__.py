@@ -14,6 +14,7 @@ from app.models.catalog import (
     Membership,
     MembershipStatus,
     ProcessingStatus,
+    RAGStatus,
     User,
     UserRole,
 )
@@ -31,6 +32,7 @@ from app.models.learning import (
     QuizQuestion,
 )
 from app.models.ai import AISummary, SpoilerMode, SummaryStatus, SummaryType
+from app.models.rag import BookChunk
 
 __all__ = [
     "AccessLevel",
@@ -43,6 +45,7 @@ __all__ = [
     "BookStatus",
     "BookType",
     "Bookmark",
+    "BookChunk",
     "Category",
     "Chapter",
     "DigitalFile",
@@ -52,6 +55,7 @@ __all__ = [
     "Membership",
     "MembershipStatus",
     "ProcessingStatus",
+    "RAGStatus",
     "Loan",
     "LoanStatus",
     "RefreshSession",

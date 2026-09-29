@@ -47,6 +47,14 @@ class ProcessingStatus(str, enum.Enum):
     FAILED = "FAILED"
 
 
+class RAGStatus(str, enum.Enum):
+    NOT_INDEXED = "NOT_INDEXED"
+    INDEXING = "INDEXING"
+    READY = "READY"
+    FAILED = "FAILED"
+    STALE = "STALE"
+
+
 class AccessLevel(str, enum.Enum):
     PUBLIC = "PUBLIC"
     REGISTERED = "REGISTERED"
@@ -223,12 +231,23 @@ class DigitalFile(UUIDTimestampMixin, Base):
     )
     processing_error: Mapped[Optional[str]] = mapped_column(Text)
     processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    rag_status: Mapped[RAGStatus] = mapped_column(
+        Enum(RAGStatus, name="rag_status"),
+        default=RAGStatus.NOT_INDEXED,
+        server_default=RAGStatus.NOT_INDEXED.value,
+    )
+    rag_error: Mapped[Optional[str]] = mapped_column(Text)
+    rag_indexed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    rag_embedding_model: Mapped[Optional[str]] = mapped_column(String)
     uploaded_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
     uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     edition: Mapped[Edition] = relationship(back_populates="digital_files")
     uploader: Mapped[User] = relationship(back_populates="uploaded_files")
     pages: Mapped[list["DocumentPage"]] = relationship(
+        back_populates="digital_file", cascade="all, delete-orphan"
+    )
+    chunks: Mapped[list["BookChunk"]] = relationship(
         back_populates="digital_file", cascade="all, delete-orphan"
     )
 

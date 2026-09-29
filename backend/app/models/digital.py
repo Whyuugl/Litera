@@ -40,6 +40,7 @@ class Chapter(UUIDTimestampMixin, Base):
     edition: Mapped[Edition] = relationship(back_populates="chapters")
     quizzes: Mapped[list["Quiz"]] = relationship(back_populates="chapter")
     ai_summaries: Mapped[list["AISummary"]] = relationship(back_populates="chapter")
+    chunks: Mapped[list["BookChunk"]] = relationship(back_populates="chapter")
 
 
 class ReadingProgress(UUIDTimestampMixin, Base):

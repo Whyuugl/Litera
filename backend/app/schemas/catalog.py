@@ -4,7 +4,7 @@ from typing import Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models import AccessLevel, BookCopyStatus, BookStatus, BookType, DigitalFileType, ProcessingStatus
+from app.models import AccessLevel, BookCopyStatus, BookStatus, BookType, DigitalFileType, ProcessingStatus, RAGStatus
 
 
 T = TypeVar("T")
@@ -250,6 +250,10 @@ class DigitalFileAdminResponse(BaseModel):
     processing_status: ProcessingStatus
     processing_error: str | None
     processed_at: datetime | None
+    rag_status: RAGStatus
+    rag_error: str | None
+    rag_indexed_at: datetime | None
+    rag_embedding_model: str | None
     uploaded_at: datetime
 
 
