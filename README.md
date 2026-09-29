@@ -29,7 +29,7 @@ The original PHP project is preserved under `legacy/perpus-app/` as a historical
 
 ## Development Status
 
-Litera currently includes the project foundation, catalog database schema, authentication, membership lifecycle, catalog API, user and admin workspaces, physical circulation, a native extracted-text reader, Learning Mode, cached AI summaries, and admin-reviewed AI quiz drafts. Fines, notifications, EPUB reading, OCR, RAG, AI chat, and ML recommendations are not implemented yet.
+Litera currently includes the project foundation, catalog database schema, authentication, membership lifecycle, catalog API, user and admin workspaces, physical circulation, a native extracted-text reader, Learning Mode, cached AI summaries, admin-reviewed AI quiz drafts, and the RAG retrieval foundation. Fines, notifications, EPUB reading, OCR, AI chat, and ML recommendations are not implemented yet.
 
 ## Backend Setup
 
@@ -82,6 +82,22 @@ Admins can generate a 3-20 question quiz draft from an eligible chapter at `POST
 The provider returns JSON mode output that is validated with strict Pydantic schemas and the existing quiz-domain validation before one atomic persistence transaction. Generated quizzes use the normal `quizzes`, `quiz_questions`, and `quiz_options` tables with `generated_by=AI` and `is_published=false`. Admins review and edit them in the existing Quiz Editor, and publishing and student attempts continue through the Phase 8 Quiz Engine without any LLM call.
 
 Quiz source is capped at 16,000 normalized characters. Oversized chapters are sampled across five evenly distributed sections instead of taking only the beginning. Generation is admin-only, request size is bounded, repeated clicks surface the existing draft, and a per-process chapter lock prevents concurrent duplicate requests. Regeneration updates an untouched draft in place; if attempt history exists, it creates a new draft and preserves the original quiz and attempts.
+
+## RAG Infrastructure
+
+Phase 9C uses PostgreSQL with pgvector; the migration enables the `vector` extension and stores 1536-dimensional `text-embedding-3-small` embeddings in `book_chunks`. The PostgreSQL server must have pgvector installed before `alembic upgrade head`. On Windows, follow the [official pgvector Windows installation instructions](https://github.com/pgvector/pgvector#installation-notes---windows) or install a compatible PostgreSQL distribution/package that includes the extension.
+
+Configure `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS`, `EMBEDDING_BATCH_SIZE`, `RAG_CHUNK_TARGET_TOKENS`, and `RAG_CHUNK_OVERLAP_TOKENS`. The current schema is intentionally fixed at 1536 dimensions; changing to a model with another dimension requires a migration and full reindex.
+
+Admins explicitly index extracted READY PDFs from the book detail screen. Chunks target 650 approximate tokens with 100-token overlap, prefer paragraph/sentence boundaries, never cross detected chapter boundaries, and retain chapter plus page-range provenance. SHA-256 content hashes allow unchanged chunks to reuse embeddings. Replacement marks an index `STALE`; failed indexing preserves the previous chunk rows and does not affect reading, summaries, or quizzes.
+
+Retrieval uses exact cosine search filtered by both edition and its current digital file. Exact search avoids premature ANN tuning for the current small catalog; add a cosine HNSW index only after production chunk volume and latency justify it. The admin debug endpoint returns at most ten matching chunks and is not a public text-dump API. Run a small Hit@K fixture with:
+
+```bash
+python -m scripts.evaluate_retrieval <edition-uuid> evaluation.json --top-k 5
+```
+
+The Ask This Book chatbot, answer generation, conversations, and user-facing citations are intentionally deferred to Phase 9D.
 
 ## Local Demo Accounts
 

@@ -48,7 +48,10 @@ export type Membership = {
 };
 export type AdminBook = BookSummary & { status: "DRAFT" | "PUBLISHED" | "ARCHIVED" };
 export type ProcessingStatus = "UPLOADED" | "PROCESSING" | "READY" | "FAILED";
-export type DigitalFile = { id: string; edition_id: string; file_url: string; original_filename: string | null; mime_type: string | null; file_type: "PDF" | "EPUB"; file_size: number | null; access_level: "PUBLIC" | "REGISTERED" | "MEMBER"; allow_download: boolean; processing_status: ProcessingStatus; processing_error: string | null; processed_at: string | null; uploaded_at: string };
+export type RAGStatus = "NOT_INDEXED" | "INDEXING" | "READY" | "FAILED" | "STALE";
+export type DigitalFile = { id: string; edition_id: string; file_url: string; original_filename: string | null; mime_type: string | null; file_type: "PDF" | "EPUB"; file_size: number | null; access_level: "PUBLIC" | "REGISTERED" | "MEMBER"; allow_download: boolean; processing_status: ProcessingStatus; processing_error: string | null; processed_at: string | null; rag_status: RAGStatus; rag_error: string | null; rag_indexed_at: string | null; rag_embedding_model: string | null; uploaded_at: string };
+export type RAGResult = { chunk_id: string; content: string; chapter: { id: string; title: string } | null; page_start: number; page_end: number; score: number };
+export type RAGIndex = { digital_file_id: string; edition_id: string; status: RAGStatus; chunk_count: number; embedding_model: string | null; indexed_at: string | null; error: string | null };
 export type BookCopy = { id: string; edition_id: string; barcode: string; shelf_location: string | null; status: "AVAILABLE" | "BORROWED" | "RESERVED" | "LOST" | "DAMAGED" | "MAINTENANCE"; condition: string | null; acquired_at: string | null };
 export type AdminEdition = Omit<Edition, "digital" | "physical"> & { book_id: string; digital_files: DigitalFile[]; physical_copies: BookCopy[] };
 export type AdminBookDetail = AdminBook & { editions: AdminEdition[] };

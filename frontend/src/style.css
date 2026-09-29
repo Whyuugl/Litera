@@ -223,7 +223,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid #566b5d; outline-
 :root[data-theme="dark"] :is(
   .learning-section, .explore-intro, .membership-layout, .identity-section,
   .book-overview, .review-layout, .summary-admin, .ai-quiz-generator,
-  .checkout-panel form
+  .checkout-panel form, .rag-panel
 ) { border-color: #3f4a43 !important; background: #232d27 !important; color: #e7ece8 !important; }
 :root[data-theme="dark"] .membership-section { background: #9e5138; color: #fff; }
 :root[data-theme="dark"] :is(.discovery-hero, .audience-section, .membership-section) :is(p, small, .eyebrow) { color: #d5dfd9 !important; }
